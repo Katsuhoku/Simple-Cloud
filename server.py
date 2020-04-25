@@ -19,40 +19,44 @@ def main():
 
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
         s.bind((HOST, PORT))
+        s.settimeout(30)
+        try:
+            # Server remains available
+            while True:
+                s.listen()
+                conn, addr = s.accept()
 
-        # Server remains available
-        while True:
-            s.listen()
-            conn, addr = s.accept()
+                # Handling new connection
+                with conn:
+                    print('Connected by', addr)
 
-            # Handling new connection
-            with conn:
-                print('Connected by', addr)
-
-                # Communication 'til client ends it
-                while True:
-                    # Waiting for petitions
-                    # 'u' = upload file, 'd' = downlaod file, 'r' = remove file
-                    # 'e' = exit
-                    op = conn.recv(1).decode('utf-8', 'replace')
-                    if op == 'u':
-                        upload(conn)
-                    elif op == 'd':
-                        download(conn)
-                    elif op == 'r':
-                        remove(conn)
-                    elif op == 'e':
-                        print('Connection ended with', addr)
-                        break # finish connection
-                    else:
-                        pass # send error message (?)
+                    # Communication 'til client ends it
+                    while True:
+                        # Waiting for petitions
+                        # 'u' = upload file, 'd' = downlaod file, 'r' = remove file
+                        # 'e' = exit
+                        op = conn.recv(1).decode('utf-8', 'replace')
+                        if op == 'u':
+                            upload(conn)
+                        elif op == 'd':
+                            download(conn)
+                        elif op == 'r':
+                            remove(conn)
+                        elif op == 'e':
+                            print('Connection ended with', addr)
+                            break # finish connection
+                        else:
+                            pass # send error message (?)
+        except socket.timeout:
+            print('Timeout! No more conexions, bye!')
 
 # Upload file: Function for saving uncoming files
 # Receives: Connected socket
 # Returns (to client): Confirmation, or throws (?) an error
 def upload(conn):
     print('Upload')
-    filename = conn.recv(1024).decode('utf-8', 'replace') # Gets filename (1)
+    name = conn.recv(1024).decode('utf-8', 'replace') # Gets filename (1)
+    filename = f'recv\{name}'
     # Verifies if file already exists
     if isfile(filename):
         # Reply (2)
@@ -63,14 +67,19 @@ def upload(conn):
     else: conn.send(b'n') # Reply (2)
 
     # New file (4)
-    f = open(f'recv/{filename}', 'wb')
-    data = conn.recv(1024)
-    while data:
-        f.write(data)
-        data = conn.recv(1024)
-    
+    with open(filename, 'wb') as f:
+        conn.settimeout(5)
+        try:
+            data = conn.recv(1024)
+            while True:
+                f.write(data)
+                data = conn.recv(1024)
+        except socket.timeout: pass
+        conn.settimeout(None)
+
     # Confirmation (5)
     conn.send(b'100')
+    print(f'Uploaded: {filename}')
 
 # Download file: Function for obtaining data of desired file
 # Receives: Connected socket

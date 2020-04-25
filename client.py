@@ -34,7 +34,6 @@ def main():
                 clsc()
                 op = menu()
                 if op == 1: # Upload file
-                    s.send(b'u')
                     upload(s)
                 elif op == 2: # Download file
                     s.send(b'd')
@@ -99,11 +98,13 @@ def upload(s):
         input('Press enter to continue...')
         return
 
+    s.send(b'u') # Request upload operation
+
     rfn = input('Filename for server (Press enter to save with original name)\n> ')
     if not rfn: rfn = lfn
 
     # Sends filename (1)
-    s.send(rfn)
+    s.send(rfn.encode('utf-8'))
 
     # Reply (2)
     exists = s.recv(1).decode('utf-8', 'replace')
@@ -120,16 +121,19 @@ def upload(s):
         if replace == 'n': return
     
     # Sending file data (4)
-    lf = open(lfn, 'rb')
-    data = lf.read(1024)
-    while data:
-        s.send(data)
+    with open(lfn, 'rb') as lf:
+        print('Sending...')
         data = lf.read(1024)
+        while data:
+            s.send(data)
+            data = lf.read(1024)
 
     # Confirmation (5)
     reply = s.recv(3).decode('utf-8', 'replace')
     if reply != '100': print("Error: Couldn't save file on server. Unknown error")
     else: print('File saved successfully on server')
+
+    input('Press enter to continue...')
 
 
 
