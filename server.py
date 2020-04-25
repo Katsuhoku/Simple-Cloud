@@ -13,7 +13,6 @@ from os.path import isfile
 
 # Main function
 # Main must handle communication with client
-# Only main will use the sockets (server socket and client-connection socket)
 def main():
     HOST = '127.0.0.1'
     PORT = 42069
@@ -30,30 +29,18 @@ def main():
             with conn:
                 print('Connected by', addr)
 
-                # 
+                # Communication 'til client ends it
                 while True:
                     # Waiting for petitions
                     # 'u' = upload file, 'd' = downlaod file, 'r' = remove file
                     # 'e' = exit
                     op = conn.recv(1).decode('utf-8', 'replace')
                     if op == 'u':
-                        # Gets filename
-                        # Verifies if file already exists
-                        # If exists, asks for replacement
-                        # If want replace, or if file doesn't exist:
-                        upload(None, None)
+                        upload(conn)
                     elif op == 'd':
-                        # Gets filename
-                        # Verifies if file exists
-                        # If doesn't, throws (?) an error
-                        # Else:
-                        download(None)
+                        download(conn)
                     elif op == 'r':
-                        # Gets filename
-                        # Verifies if file exists
-                        # If doesn't, throws (?) an error
-                        # Else
-                        remove(None)
+                        remove(conn)
                     elif op == 'e':
                         print('Connection ended with', addr)
                         break # finish connection
@@ -61,26 +48,50 @@ def main():
                         pass # send error message (?)
 
 # Upload file: Function for saving uncoming files
-# Receives: File data; Filename
-# * Will replace previous file if exists
-# Returns: Confirmation, or throws (?) an error
-def upload(data, filename):
+# Receives: Connected socket
+# Returns (to client): Confirmation, or throws (?) an error
+def upload(conn):
     print('Upload')
+    filename = conn.recv(1024).decode('utf-8', 'replace') # Gets filename (1)
+    # Verifies if file already exists
+    if isfile(filename):
+        # Reply (2)
+        conn.send(b'y')
+        # If exists, asks for replacement (3)
+        replace = conn.recv(1).decode('utf-8', 'replace')
+        if replace == 'n': return
+    else: conn.send(b'n') # Reply (2)
+
+    # New file (4)
+    f = open(f'recv/{filename}', 'wb')
+    data = conn.recv(1024)
+    while data:
+        f.write(data)
+        data = conn.recv(1024)
+    
+    # Confirmation (5)
+    conn.send(b'100')
 
 # Download file: Function for obtaining data of desired file
-# Receives: Filename
+# Receives: Connected socket
 # Returns: File data, or throws (?) an error
-# * File with the specified filename MUST exist
-def download(filename):
+def download(conn):
     print('Download')
+    # Gets filename
+    # Verifies if file exists
+    # If doesn't, throws (?) an error
+    # Else:
 
 # Remove file: Function for delete a file
-# Receives: Filename
+# Receives: Connected socket
 # Return: Confirmation, or throws (?) an error
-# * File with the specified filename MUSt exist
 # (Provide "Recycle Bin"?)
-def remove(filename):
+def remove(conn):
     print('Remove')
+    # Gets filename
+    # Verifies if file exists
+    # If doesn't, throws (?) an error
+    # Else
 
 
 

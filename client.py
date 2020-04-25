@@ -10,6 +10,9 @@
 
 import socket
 from os import system
+from os.path import isfile
+from sys import platform
+import subprocess as sp
 
 connected = False
 
@@ -18,7 +21,7 @@ def main():
     global connected
 
     # Connect to server
-    system('cls')
+    clsc()
     host, port = serverInfo()
 
     try:
@@ -28,17 +31,17 @@ def main():
 
             # Shows main menu
             while True:
-                system('cls')
+                clsc()
                 op = menu()
                 if op == 1: # Upload file
                     s.send(b'u')
-                    upload()
+                    upload(s)
                 elif op == 2: # Download file
                     s.send(b'd')
-                    download()
+                    download(s)
                 elif op == 3: # Remove file
                     s.send(b'r')
-                    remove()
+                    remove(s)
                 else: # Exit
                     s.send(b'e')
                     break
@@ -86,23 +89,72 @@ def serverInfo():
 # If local file exists, asks for filename with which will be saved on server
 # If file exists on server, asks for replace or cancel operation
 # If file doesn't exist, or replace, sends local file data
-def upload():
-    pass
+def upload(s):
+    clsc()
+    print('\tUpload File')
+
+    lfn = input('Local filename > ')
+    if not isfile(lfn):
+        print(f'Cannot find "{lfn}"')
+        input('Press enter to continue...')
+        return
+
+    rfn = input('Filename for server (Press enter to save with original name)\n> ')
+    if not rfn: rfn = lfn
+
+    # Sends filename (1)
+    s.send(rfn)
+
+    # Reply (2)
+    exists = s.recv(1).decode('utf-8', 'replace')
+    if exists == 'y':
+        print(f'File "{rfn}" already exists in server')
+        while True:
+            replace = input('Replace? (y/n) > ')
+            if replace == 'y' or replace == 'n':
+                # Replacement answer (3)
+                s.send(replace.encode('utf-8'))
+                break
+            print('(Expected "y" for replace, or "n" for cancel. Try again.)')
+
+        if replace == 'n': return
+    
+    # Sending file data (4)
+    lf = open(lfn, 'rb')
+    data = lf.read(1024)
+    while data:
+        s.send(data)
+        data = lf.read(1024)
+
+    # Confirmation (5)
+    reply = s.recv(3).decode('utf-8', 'replace')
+    if reply != '100': print("Error: Couldn't save file on server. Unknown error")
+    else: print('File saved successfully on server')
+
+
 
 # Downlaod file from server: Handles the process for downloading a file
 # Asks for filename on server
 # If file exists on server, asks for the local filename
 # If local filename exists, asks for replace or cancel operation
 # If local file doesn't exists, or replace, gets file data from server and saves file
-def download():
+def download(s):
     pass
 
 # Remove file on server: Handles the process for removing a file saved on server
 # Asks for filename on server
 # If file exists, request deleting
-def remove():
+def remove(s):
     pass
 
+def clsc():
+    if platform == 'linux' or platform == 'linux2':
+        tmp = sp.call('clear', shell=True)
+    elif platform == 'darwin':
+        tmp = sp.call('cls', shell=True)
+    elif platform == 'win32':
+        system('cls')
+        
 
 if __name__ == '__main__':
     main()
