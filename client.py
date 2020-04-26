@@ -130,8 +130,8 @@ def upload(s):
 
     # Confirmation (5)
     reply = s.recv(3).decode('utf-8', 'replace')
-    if reply != '100': print("Error: Couldn't save file on server. Unknown error")
-    else: print('File saved successfully on server')
+    if reply == '100': print('File saved successfully on server')
+    else: print("Error: Couldn't save file on server. Unknown error")
 
     input('Press enter to continue...')
 
@@ -143,7 +143,48 @@ def upload(s):
 # If local filename exists, asks for replace or cancel operation
 # If local file doesn't exists, or replace, gets file data from server and saves file
 def download(s):
-    pass
+    clsc()
+    print('\tDownload File')
+
+    rfn = input('Remote filename > ')
+    # Sends requested filename (1)
+    s.send(rfn.encode('utf-8'))
+    # Reply (2)
+    exists = s.recv(1).decode('utf-8', 'replace')
+    if exists == 'n':
+        print(f'Cannot find {rfn} on server')
+        input('Press enter to continue...')
+        return
+    
+    if isfile(rfn):
+        print(f'File "{rfn}" already exists locally')
+        while True:
+            replace = input('Replace? (y/n) > ')
+            if replace == 'y' or replace == 'n':
+                # Replacement answer (3)
+                s.send(replace.encode('utf-8'))
+                break
+            print('(Expected "y" for replace, or "n" for cancel. Try again.)')
+        
+        if replace == 'n': return
+    else: s.send(b'y')
+
+    # New File (4)
+    with open(rfn, 'wb') as lf:
+        s.settimeout(5)
+        try:
+            data = s.recv(1024)
+            while True:
+                lf.write(data)
+                data = s.recv(1024)
+        except socket.timeout: pass
+        s.settimeout(None)
+
+    # Confirmation (5)
+    s.send(b'100')
+    print(f'Downloaded: {rfn}')
+    input('Press enter to continue...')
+
 
 # Remove file on server: Handles the process for removing a file saved on server
 # Asks for filename on server
@@ -151,6 +192,7 @@ def download(s):
 def remove(s):
     pass
 
+# Clear Screen Function
 def clsc():
     if platform == 'linux' or platform == 'linux2':
         tmp = sp.call('clear', shell=True)

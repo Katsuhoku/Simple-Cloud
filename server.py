@@ -14,7 +14,7 @@ from os.path import isfile
 # Main function
 # Main must handle communication with client
 def main():
-    HOST = '127.0.0.1'
+    HOST = socket.gethostname()
     PORT = 42069
 
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
@@ -86,10 +86,29 @@ def upload(conn):
 # Returns: File data, or throws (?) an error
 def download(conn):
     print('Download')
-    # Gets filename
+    name = conn.recv(1024).decode('utf-8', 'replace') # Gets filename (1)
+    filename = f'recv\{name}'
     # Verifies if file exists
-    # If doesn't, throws (?) an error
-    # Else:
+    if isfile(filename):
+        # Reply (2)
+        conn.send(b'y')
+        # If exists, asks for sending (3)
+        send = conn.recv(1).decode('utf-8', 'replace')
+        if send == 'n': return
+        else:
+            # Sending file data (4)
+            with open(filename, 'rb') as f:
+                print('Sending...')
+                data = f.read(1024)
+                while data:
+                    conn.send(data)
+                    data = f.read(1024)
+
+            # Confirmation (5)
+            reply = conn.recv(3).decode('utf-8', 'replace')
+            if reply == '100': print('File transfered successfully to client')
+            else: print("Error: Couldn't transfer file. Unknown error")
+    else: conn.send(b'n') # Reply (2)
 
 # Remove file: Function for delete a file
 # Receives: Connected socket
