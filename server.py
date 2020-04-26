@@ -10,6 +10,7 @@
 
 import socket
 from os.path import isfile
+from os import remove as delete
 
 # Main function
 # Main must handle communication with client
@@ -116,10 +117,24 @@ def download(conn):
 # (Provide "Recycle Bin"?)
 def remove(conn):
     print('Remove')
-    # Gets filename
+    name = conn.recv(1024).decode('utf-8', 'replace') # Gets filename (1)
+    filename = f'recv\{name}'
     # Verifies if file exists
-    # If doesn't, throws (?) an error
-    # Else
+    if isfile(filename):
+        # Reply (2)
+        conn.send(b'y')
+        # If exists, asks for replacement (3)
+        remove = conn.recv(1).decode('utf-8', 'replace')
+        if remove == 'n': return
+    else: conn.send(b'n') # Reply (2)
+
+    # Delete file (permanently)
+    delete(filename)
+
+    # Confirmation (4)
+    conn.send(b'100')
+    print(f'Removed: {filename}')
+    
 
 
 

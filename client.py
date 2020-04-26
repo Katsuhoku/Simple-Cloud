@@ -190,7 +190,34 @@ def download(s):
 # Asks for filename on server
 # If file exists, request deleting
 def remove(s):
-    pass
+    clsc()
+    print('\tRemove File')
+
+    rfn = input('Remote filename > ')
+    # Sends requested filename (1)
+    s.send(rfn.encode('utf-8'))
+    # Reply (2)
+    exists = s.recv(1).decode('utf-8', 'replace')
+    if exists == 'n':
+        print(f'Cannot find {rfn} on server')
+        input('Press enter to continue...')
+        return
+    
+    while True:
+        replace = input('Are you sure to remove?\nThis action cannot be undone (y/n) > ')
+        if replace == 'y' or replace == 'n':
+            # Replacement answer (3)
+            s.send(replace.encode('utf-8'))
+            break
+        print('(Expected "y" for replace, or "n" for cancel. Try again.)')
+    if replace == 'n': return
+
+    # Confirmation (4)
+    reply = s.recv(3).decode('utf-8', 'replace')
+    if reply == '100': print('File remove successfully from server')
+    else: print("Error: Couldn't remoe file from server. Unknown error")
+
+    input('Press enter to continue...')
 
 # Clear Screen Function
 def clsc():
